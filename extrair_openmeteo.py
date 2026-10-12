@@ -168,5 +168,25 @@ def main():
         print(f"[AVISO] {sem_temp} horas sem valor de temperatura (dados ainda não disponíveis na origem).")
 
 
+def lambda_handler(event, context):
+    import boto3
+    from s3_utils import PREFIXO_CLIMA, encontrar_bucket_raw, enviar_csv
+
+    agora = datetime.now(tz=TZ_SP)
+    linhas, ok = extrair_bronze(agora.date())
+    if not ok:
+        raise RuntimeError("Extração da Open-Meteo falhou; nada foi gravado para evitar dados incompletos.")
+    if not linhas:
+        raise RuntimeError("Nenhum registro extraído da Open-Meteo.")
+
+    s3 = boto3.client("s3")
+    bucket = encontrar_bucket_raw(s3)
+    key = f"{PREFIXO_CLIMA}/open_meteo_raw_{agora.strftime('%Y%m%d_%H%M')}.csv"
+    enviar_csv(s3, bucket, key, linhas, COLUNAS_BRONZE)
+
+    print(f"[SUCESSO] {len(linhas)} linhas horárias gravadas em s3://{bucket}/{key}")
+    return {"statusCode": 200, "bucket": bucket, "key": key, "linhas": len(linhas)}
+
+
 if __name__ == "__main__":
     main()
