@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import argparse
 import csv
+import io
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
 PASTA_BRONZE = Path("./dados/bronze/brasilapi_feriados")
 PASTA_SILVER = Path("./dados/silver/feriados")
+
+# Modo AWS Glue (bronze -> silver): raw/bronze/feriados/*.csv -> trusted/silver/feriados/*.csv
+PREFIXO_BRONZE_S3 = "bronze/feriados/"
+PREFIXO_SILVER_S3 = "silver/feriados/"
 
 ESFERA_API = {"national": "Nacional", "state": "Estadual", "municipal": "Municipal"}
 PRIORIDADE_ESFERA = {"Nacional": 0, "Estadual": 1, "Municipal": 2}
@@ -91,10 +98,13 @@ def buscar_arquivo_bronze_mais_recente() -> Path | None:
 
 
 def montar_feriados(caminho_entrada: Path) -> tuple[list[dict], list[int], dict]:
-    stats = {"api": 0, "api_sem_data": 0, "locais": 0, "sobrescritos": 0, "duplicados": 0}
-
     with open(caminho_entrada, encoding="utf-8") as f:
         linhas = list(csv.DictReader(f))
+    return montar_feriados_de_linhas(linhas)
+
+
+def montar_feriados_de_linhas(linhas: list[dict]) -> tuple[list[dict], list[int], dict]:
+    stats = {"api": 0, "api_sem_data": 0, "locais": 0, "sobrescritos": 0, "duplicados": 0}
     stats["api"] = len(linhas)
 
     por_data: dict[date, dict] = {}
@@ -182,7 +192,75 @@ def gravar_csv(linhas: list[dict], colunas: list[str], caminho: Path) -> None:
         writer.writerows(linhas)
 
 
+def csv_em_bytes(linhas: list[dict], colunas: list[str]) -> bytes:
+    buf = io.StringIO(newline="")
+    writer = csv.DictWriter(buf, fieldnames=colunas, delimiter=",", quoting=csv.QUOTE_ALL)
+    writer.writeheader()
+    writer.writerows(linhas)
+    return buf.getvalue().encode("utf-8")
+
+
+def parse_args_glue():
+    """Argumentos do job do Glue (--BUCKET_RAW / --BUCKET_TRUSTED). Vazios = execução local."""
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument("--BUCKET_RAW", default=os.environ.get("BUCKET_RAW"))
+    parser.add_argument("--BUCKET_TRUSTED", default=os.environ.get("BUCKET_TRUSTED"))
+    args, _ = parser.parse_known_args()
+    return args
+
+
+def buscar_chave_bronze_mais_recente(s3, bucket: str) -> str | None:
+    """Chave do CSV mais recente em s3://bucket/bronze/feriados/."""
+    mais_recente = None
+    paginas = s3.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=PREFIXO_BRONZE_S3)
+    for pagina in paginas:
+        for obj in pagina.get("Contents", []):
+            if not obj["Key"].lower().endswith(".csv"):
+                continue
+            if mais_recente is None or obj["LastModified"] > mais_recente["LastModified"]:
+                mais_recente = obj
+    return mais_recente["Key"] if mais_recente else None
+
+
+def main_glue(bucket_raw: str, bucket_trusted: str) -> None:
+    """Bronze (bucket raw) -> Silver (bucket trusted), rodando no AWS Glue."""
+    import boto3
+
+    print("Iniciando tratamento dos feriados no Glue (raw -> trusted)...")
+    s3 = boto3.client("s3")
+
+    chave = buscar_chave_bronze_mais_recente(s3, bucket_raw)
+    if not chave:
+        raise RuntimeError(f"Nenhum CSV em s3://{bucket_raw}/{PREFIXO_BRONZE_S3}. Execute a lambda extrair_feriados primeiro.")
+    print(f"[INFO] Processando arquivo: s3://{bucket_raw}/{chave}")
+
+    texto = s3.get_object(Bucket=bucket_raw, Key=chave)["Body"].read().decode("utf-8-sig")
+    feriados, anos, stats = montar_feriados_de_linhas(list(csv.DictReader(io.StringIO(texto))))
+    if not anos:
+        raise RuntimeError("Nenhum feriado válido no arquivo de entrada.")
+
+    calendario = montar_calendario(feriados, anos)
+    feriados_saida = [
+        {**f, "data": f["data"].isoformat(), "dia_semana": DIAS_SEMANA[f["data"].weekday()]} for f in feriados
+    ]
+
+    destinos = {
+        f"{PREFIXO_SILVER_S3}feriados_silver.csv": csv_em_bytes(feriados_saida, COLUNAS_FERIADOS),
+        f"{PREFIXO_SILVER_S3}calendario_silver.csv": csv_em_bytes(calendario, COLUNAS_CALENDARIO),
+    }
+    for key, corpo in destinos.items():
+        s3.put_object(Bucket=bucket_trusted, Key=key, Body=corpo, ContentType="text/csv; charset=utf-8")
+        print(f"[SUCESSO] s3://{bucket_trusted}/{key}")
+
+    print(f"Anos: {anos} | feriados: {len(feriados)} | dias no calendário: {len(calendario)} | stats: {stats}")
+
+
 def main():
+    args = parse_args_glue()
+    if args.BUCKET_RAW and args.BUCKET_TRUSTED:
+        main_glue(args.BUCKET_RAW, args.BUCKET_TRUSTED)
+        return
+
     print("Iniciando tratamento dos feriados (Camada Silver)...")
 
     if len(sys.argv) == 2:

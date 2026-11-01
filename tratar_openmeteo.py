@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import csv
+import io
+import os
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -8,6 +11,10 @@ from pathlib import Path
 
 PASTA_BRONZE = Path("./dados/bronze/open_meteo")
 PASTA_SILVER = Path("./dados/silver/open_meteo")
+
+# Modo AWS Glue (bronze -> silver): raw/bronze/clima/*.csv -> trusted/silver/clima/*.csv
+PREFIXO_BRONZE_S3 = "bronze/clima/"
+PREFIXO_SILVER_S3 = "silver/clima/"
 
 # Janela de funcionamento da cafeteria: horas H com HORA_ABERTURA <= H < HORA_FECHAMENTO.
 HORA_ABERTURA = 9
@@ -89,34 +96,42 @@ def media(valores: list[float]) -> float | None:
 
 
 def carregar_bronze() -> tuple[dict[str, dict], dict]:
-    """Junta todos os arquivos bronze: para cada hora fica o dado observado, ou a previsão mais recente."""
+    """Junta todos os arquivos bronze locais: para cada hora fica o dado observado, ou a previsão mais recente."""
+    leitores = []
+    for caminho in sorted(PASTA_BRONZE.glob("*.csv")):
+        with open(caminho, encoding="utf-8") as f:
+            leitores.append(list(csv.DictReader(f)))
+    return consolidar_bronze(leitores)
+
+
+def consolidar_bronze(arquivos: list[list[dict]]) -> tuple[dict[str, dict], dict]:
+    """Recebe as linhas de cada arquivo bronze (já lidas) e escolhe, por hora, a melhor leitura."""
     stats = {"arquivos": 0, "linhas": 0, "invalidas": 0}
     por_hora: dict[str, dict] = {}
 
-    for caminho in sorted(PASTA_BRONZE.glob("*.csv")):
+    for linhas in arquivos:
         stats["arquivos"] += 1
-        with open(caminho, encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                stats["linhas"] += 1
-                try:
-                    datetime.strptime(row["data_hora"], "%Y-%m-%d %H:%M:%S")
-                except (KeyError, ValueError):
-                    stats["invalidas"] += 1
-                    continue
-                if para_float(row.get("temperature_2m")) is None:
-                    stats["invalidas"] += 1
-                    continue
+        for row in linhas:
+            stats["linhas"] += 1
+            try:
+                datetime.strptime(row["data_hora"], "%Y-%m-%d %H:%M:%S")
+            except (KeyError, ValueError):
+                stats["invalidas"] += 1
+                continue
+            if para_float(row.get("temperature_2m")) is None:
+                stats["invalidas"] += 1
+                continue
 
-                atual = por_hora.get(row["data_hora"])
-                if atual is None:
-                    por_hora[row["data_hora"]] = row
-                    continue
+            atual = por_hora.get(row["data_hora"])
+            if atual is None:
+                por_hora[row["data_hora"]] = row
+                continue
 
-                prio_nova = PRIORIDADE_FONTE.get(row["fonte"], 9)
-                prio_atual = PRIORIDADE_FONTE.get(atual["fonte"], 9)
-                mais_recente = row["extraido_em"] > atual["extraido_em"]
-                if prio_nova < prio_atual or (prio_nova == prio_atual and mais_recente):
-                    por_hora[row["data_hora"]] = row
+            prio_nova = PRIORIDADE_FONTE.get(row["fonte"], 9)
+            prio_atual = PRIORIDADE_FONTE.get(atual["fonte"], 9)
+            mais_recente = row["extraido_em"] > atual["extraido_em"]
+            if prio_nova < prio_atual or (prio_nova == prio_atual and mais_recente):
+                por_hora[row["data_hora"]] = row
 
     return por_hora, stats
 
@@ -224,7 +239,65 @@ def gravar_csv(linhas: list[dict], colunas: list[str], caminho: Path) -> None:
         writer.writerows(linhas)
 
 
+def csv_em_bytes(linhas: list[dict], colunas: list[str]) -> bytes:
+    buf = io.StringIO(newline="")
+    writer = csv.DictWriter(buf, fieldnames=colunas, delimiter=",", quoting=csv.QUOTE_ALL)
+    writer.writeheader()
+    writer.writerows(linhas)
+    return buf.getvalue().encode("utf-8")
+
+
+def parse_args_glue():
+    """Argumentos do job do Glue (--BUCKET_RAW / --BUCKET_TRUSTED). Vazios = execução local."""
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument("--BUCKET_RAW", default=os.environ.get("BUCKET_RAW"))
+    parser.add_argument("--BUCKET_TRUSTED", default=os.environ.get("BUCKET_TRUSTED"))
+    args, _ = parser.parse_known_args()
+    return args
+
+
+def main_glue(bucket_raw: str, bucket_trusted: str) -> None:
+    """Bronze (bucket raw) -> Silver (bucket trusted), rodando no AWS Glue."""
+    import boto3
+
+    print("Iniciando tratamento do clima - Open-Meteo no Glue (raw -> trusted)...")
+    s3 = boto3.client("s3")
+
+    chaves = []
+    for pagina in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket_raw, Prefix=PREFIXO_BRONZE_S3):
+        chaves += [o["Key"] for o in pagina.get("Contents", []) if o["Key"].lower().endswith(".csv")]
+    if not chaves:
+        raise RuntimeError(f"Nenhum CSV em s3://{bucket_raw}/{PREFIXO_BRONZE_S3}. Execute a lambda extrair_openmeteo primeiro.")
+
+    arquivos = []
+    for chave in sorted(chaves):
+        texto = s3.get_object(Bucket=bucket_raw, Key=chave)["Body"].read().decode("utf-8-sig")
+        arquivos.append(list(csv.DictReader(io.StringIO(texto))))
+
+    por_hora, stats = consolidar_bronze(arquivos)
+    horario = montar_horario(por_hora)
+    diario = montar_diario(horario)
+    if not diario:
+        raise RuntimeError("Nenhum dia com dados no horário comercial.")
+
+    destinos = {
+        f"{PREFIXO_SILVER_S3}clima_horario_silver.csv": csv_em_bytes(horario, COLUNAS_HORARIO),
+        f"{PREFIXO_SILVER_S3}clima_diario_silver.csv": csv_em_bytes(diario, COLUNAS_DIARIO),
+    }
+    for key, corpo in destinos.items():
+        s3.put_object(Bucket=bucket_trusted, Key=key, Body=corpo, ContentType="text/csv; charset=utf-8")
+        print(f"[SUCESSO] s3://{bucket_trusted}/{key}")
+
+    print(f"Arquivos bronze: {stats['arquivos']} ({stats['linhas']} linhas, {stats['invalidas']} inválidas)")
+    print(f"Horas: {len(horario)} | dias: {len(diario)} | período: {diario[0]['data']} a {diario[-1]['data']}")
+
+
 def main():
+    args = parse_args_glue()
+    if args.BUCKET_RAW and args.BUCKET_TRUSTED:
+        main_glue(args.BUCKET_RAW, args.BUCKET_TRUSTED)
+        return
+
     print("Iniciando tratamento do clima - Open-Meteo (Camada Silver)...")
 
     if not PASTA_BRONZE.exists() or not any(PASTA_BRONZE.glob("*.csv")):
