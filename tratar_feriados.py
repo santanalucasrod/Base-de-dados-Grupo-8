@@ -11,9 +11,10 @@ from pathlib import Path
 PASTA_BRONZE = Path("./dados/bronze/brasilapi_feriados")
 PASTA_SILVER = Path("./dados/silver/feriados")
 
-# Modo AWS Glue (bronze -> silver): raw/bronze/feriados/*.csv -> trusted/silver/feriados/*.csv
+# Modo AWS Glue (bronze -> silver): raw/bronze/feriados/*.csv -> trusted/silver/{feriados,calendario}/*.csv
 PREFIXO_BRONZE_S3 = "bronze/feriados/"
-PREFIXO_SILVER_S3 = "silver/feriados/"
+# Uma pasta por tabela: no Athena/Glue cada tabela e uma pasta inteira do S3.
+PREFIXO_SILVER_S3 = "silver/"
 
 ESFERA_API = {"national": "Nacional", "state": "Estadual", "municipal": "Municipal"}
 PRIORIDADE_ESFERA = {"Nacional": 0, "Estadual": 1, "Municipal": 2}
@@ -245,8 +246,8 @@ def main_glue(bucket_raw: str, bucket_trusted: str) -> None:
     ]
 
     destinos = {
-        f"{PREFIXO_SILVER_S3}feriados_silver.csv": csv_em_bytes(feriados_saida, COLUNAS_FERIADOS),
-        f"{PREFIXO_SILVER_S3}calendario_silver.csv": csv_em_bytes(calendario, COLUNAS_CALENDARIO),
+        f"{PREFIXO_SILVER_S3}feriados/feriados_silver.csv": csv_em_bytes(feriados_saida, COLUNAS_FERIADOS),
+        f"{PREFIXO_SILVER_S3}calendario/calendario_silver.csv": csv_em_bytes(calendario, COLUNAS_CALENDARIO),
     }
     for key, corpo in destinos.items():
         s3.put_object(Bucket=bucket_trusted, Key=key, Body=corpo, ContentType="text/csv; charset=utf-8")

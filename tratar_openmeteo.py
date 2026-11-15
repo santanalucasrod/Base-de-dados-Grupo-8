@@ -12,9 +12,10 @@ from pathlib import Path
 PASTA_BRONZE = Path("./dados/bronze/open_meteo")
 PASTA_SILVER = Path("./dados/silver/open_meteo")
 
-# Modo AWS Glue (bronze -> silver): raw/bronze/clima/*.csv -> trusted/silver/clima/*.csv
+# Modo AWS Glue (bronze -> silver): raw/bronze/clima/*.csv -> trusted/silver/clima_{horario,diario}/*.csv
 PREFIXO_BRONZE_S3 = "bronze/clima/"
-PREFIXO_SILVER_S3 = "silver/clima/"
+# Uma pasta por tabela: no Athena/Glue cada tabela e uma pasta inteira do S3.
+PREFIXO_SILVER_S3 = "silver/"
 
 # Janela de funcionamento da cafeteria: horas H com HORA_ABERTURA <= H < HORA_FECHAMENTO.
 HORA_ABERTURA = 9
@@ -281,8 +282,8 @@ def main_glue(bucket_raw: str, bucket_trusted: str) -> None:
         raise RuntimeError("Nenhum dia com dados no horário comercial.")
 
     destinos = {
-        f"{PREFIXO_SILVER_S3}clima_horario_silver.csv": csv_em_bytes(horario, COLUNAS_HORARIO),
-        f"{PREFIXO_SILVER_S3}clima_diario_silver.csv": csv_em_bytes(diario, COLUNAS_DIARIO),
+        f"{PREFIXO_SILVER_S3}clima_horario/clima_horario_silver.csv": csv_em_bytes(horario, COLUNAS_HORARIO),
+        f"{PREFIXO_SILVER_S3}clima_diario/clima_diario_silver.csv": csv_em_bytes(diario, COLUNAS_DIARIO),
     }
     for key, corpo in destinos.items():
         s3.put_object(Bucket=bucket_trusted, Key=key, Body=corpo, ContentType="text/csv; charset=utf-8")
