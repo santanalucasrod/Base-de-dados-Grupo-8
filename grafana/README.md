@@ -46,10 +46,10 @@ A previsão da dashboard da gerência usa a **previsão do tempo** (`clima_diari
 rode a partir da pasta `Base-de-dados-Grupo-8`:
 
 ```
-python extrair_openmeteo.py
-python tratar_openmeteo.py
-python extrair_feriados.py      # uma vez por ano basta
-python tratar_feriados.py
+python pipeline/extrair_openmeteo.py
+python pipeline/tratar_openmeteo.py
+python pipeline/extrair_feriados.py      # uma vez por ano basta
+python pipeline/tratar_feriados.py
 python grafana/carregar_bases_mysql.py
 mysql -u root -p --default-character-set=utf8mb4 cafeteria < grafana/02_carga_bases_externas.sql
 python modelo_previsao/treinar_previsao.py

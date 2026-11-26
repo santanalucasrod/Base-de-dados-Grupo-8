@@ -1,2 +1,5 @@
 __pycache__/
 modelo_previsao/ultimo_treino.txt
+
+# arquivos temporários do Word e do Excel (abertos no momento)
+~$*
