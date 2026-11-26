@@ -1,0 +1,1496 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_KENTOCAFE",
+      "label": "MySQL Kento Café",
+      "description": "Banco cafeteria (usuário grafana, somente leitura)",
+      "type": "datasource",
+      "pluginId": "mysql",
+      "pluginName": "MySQL"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.4.0"
+    },
+    {
+      "type": "datasource",
+      "id": "mysql",
+      "name": "MySQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    }
+  ],
+  "uid": "kentocafe-admin",
+  "title": "Kento Café — Administração do Sistema",
+  "description": "Saúde da aplicação: fila de pedidos, uso, qualidade dos dados, bases externas e S3.",
+  "tags": [
+    "kentocafe",
+    "administrador"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "America/Sao_Paulo",
+  "weekStart": "monday",
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "textbox",
+        "name": "limite_parado",
+        "label": "Pedido parado após (min)",
+        "description": "A partir de quantos minutos um pedido aberto é considerado parado.",
+        "query": "30",
+        "current": {
+          "text": "30",
+          "value": "30"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "30",
+            "value": "30"
+          }
+        ],
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Operação agora",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Pedidos na fila",
+      "description": "Pedidos Pendentes ou Em preparo (o que aparece na tela de Pedidos).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS `Na fila`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE s.nome IN ('Pendente', 'Em preparo')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Parados há muito tempo",
+      "description": "Pedidos abertos há mais que o limite (campo lá em cima). Costuma ser pedido esquecido na fila ou falha ao concluir.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS `Parados`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE s.nome IN ('Pendente', 'Em preparo')\n  AND p.dt_hr_pedido < (UTC_TIMESTAMP() - INTERVAL 3 HOUR) - INTERVAL ${limite_parado} MINUTE"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Último pedido registrado",
+      "description": "Tempo desde o último pedido gravado (ignora pedidos com data futura). Se a cafeteria está aberta e isto não muda, o cadastro de pedidos pode ter parado.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TIMESTAMPDIFF(SECOND, MAX(p.dt_hr_pedido), (UTC_TIMESTAMP() - INTERVAL 3 HOUR)) AS `Há`\nFROM pedido p\nWHERE p.dt_hr_pedido <= (UTC_TIMESTAMP() - INTERVAL 3 HOUR)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#9E9E9E"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Pedidos abertos (mais antigos primeiro)",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT `Pedido`, `Cliente`, `Status`, `Feito em`, `Aberto há (min)`, `Itens prontos`, `Funcionário`\nFROM (\n    SELECT p.id                                                  AS `Pedido`,\n           p.nome_cliente                                        AS `Cliente`,\n           s.nome                                                AS `Status`,\n           DATE_FORMAT(p.dt_hr_pedido, '%d/%m %H:%i')            AS `Feito em`,\n           TIMESTAMPDIFF(MINUTE, p.dt_hr_pedido, (UTC_TIMESTAMP() - INTERVAL 3 HOUR))        AS `Aberto há (min)`,\n           CONCAT(SUM(ip.pronto), '/', COUNT(ip.id))             AS `Itens prontos`,\n           f.nome                                                AS `Funcionário`,\n           p.dt_hr_pedido                                        AS ordem\n    FROM pedido p\n    JOIN status s      ON s.id = p.status_id\n    JOIN funcionario f ON f.id = p.funcionario_id\n    LEFT JOIN item_pedido ip ON ip.pedido_id = p.id\n    WHERE s.nome IN ('Pendente', 'Em preparo')\n    GROUP BY p.id, p.nome_cliente, s.nome, p.dt_hr_pedido, f.nome\n    UNION ALL\n    -- sem pedidos abertos: uma linha avisando, em vez de \"No data\"\n    SELECT NULL, 'Nenhum pedido aberto', '', '', 0, '', '', NULL\n    FROM DUAL\n    WHERE NOT EXISTS (SELECT 1 FROM pedido p JOIN status s ON s.id = p.status_id WHERE s.nome IN ('Pendente', 'Em preparo'))\n) t\nORDER BY ordem IS NULL, ordem\nLIMIT 50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aberto há (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 15
+                    },
+                    {
+                      "color": "red",
+                      "value": 30
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Uso do sistema no período",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Pedidos por dia e status",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 19,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT UNIX_TIMESTAMP(DATE(p.dt_hr_pedido))                      AS time,\n       SUM(s.nome = 'Pronto')                                     AS `Prontos`,\n       SUM(s.nome = 'Cancelado')                                  AS `Cancelados`,\n       SUM(s.nome IN ('Pendente', 'Em preparo'))                  AS `Em aberto`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido)\nGROUP BY UNIX_TIMESTAMP(DATE(p.dt_hr_pedido))\nORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Prontos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5A8F5A"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cancelados"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C0504D"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Em aberto"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E08A3C"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Taxa de cancelamento",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 13,
+        "w": 5,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100 * AVG(s.nome = 'Cancelado') AS `Cancelados`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Qualidade dos dados (todo o banco)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Verificações automáticas",
+      "description": "Cada linha conta registros que não deveriam existir. 'Verificar' não quer dizer erro na hora: dados de demonstração com data futura, por exemplo, aparecem aqui de propósito.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 13
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT `Verificação`,\n       `Ocorrências`,\n       CASE WHEN `Ocorrências` = 0 THEN 'OK' ELSE 'Verificar' END AS `Situação`,\n       `Onde olhar`\nFROM (\nSELECT 1 AS ordem, 'Pedidos sem nenhum item' AS `Verificação`, (SELECT COUNT(*) FROM pedido p WHERE NOT EXISTS (SELECT 1 FROM item_pedido i WHERE i.pedido_id = p.id)) AS `Ocorrências`, 'Back: POST /pedidos deveria recusar carrinho vazio' AS `Onde olhar`\nUNION ALL\nSELECT 2 AS ordem, 'Valor do pedido diferente da soma dos itens' AS `Verificação`, (SELECT COUNT(*) FROM (\n        SELECT p.id FROM pedido p JOIN item_pedido i ON i.pedido_id = p.id\n        GROUP BY p.id, p.valor_total\n        HAVING ABS(p.valor_total - SUM(i.quantidade * i.preco_unidade)) > 0.01) t) AS `Ocorrências`, 'Back: cálculo do valor_total em PedidoService' AS `Onde olhar`\nUNION ALL\nSELECT 3 AS ordem, 'Pedidos prontos sem horário de pronto' AS `Verificação`, (SELECT COUNT(*) FROM pedido p JOIN status s ON s.id = p.status_id WHERE s.nome = 'Pronto' AND p.dt_hr_pronto IS NULL) AS `Ocorrências`, 'Back: concluir/atualizarStatus deve gravar dt_hr_pronto' AS `Onde olhar`\nUNION ALL\nSELECT 4 AS ordem, 'Horário de pronto antes do pedido' AS `Verificação`, (SELECT COUNT(*) FROM pedido WHERE dt_hr_pronto < dt_hr_pedido) AS `Ocorrências`, 'Banco: dt_hr_pronto < dt_hr_pedido' AS `Onde olhar`\nUNION ALL\nSELECT 5 AS ordem, 'Pedidos com data no futuro' AS `Verificação`, (SELECT COUNT(*) FROM pedido WHERE dt_hr_pedido > (UTC_TIMESTAMP() - INTERVAL 3 HOUR) + INTERVAL 5 MINUTE) AS `Ocorrências`, 'Dados de demonstração ou relógio do servidor errado' AS `Onde olhar`\nUNION ALL\nSELECT 6 AS ordem, 'Pedidos fora do horário de funcionamento (9h–18h)' AS `Verificação`, (SELECT COUNT(*) FROM pedido WHERE HOUR(dt_hr_pedido) < 9 OR HOUR(dt_hr_pedido) >= 18) AS `Ocorrências`, 'Fuso do servidor (Docker em UTC grava +3h) ou teste' AS `Onde olhar`\nUNION ALL\nSELECT 7 AS ordem, 'Pedidos em aberto de dias anteriores' AS `Verificação`, (SELECT COUNT(*) FROM pedido p JOIN status s ON s.id = p.status_id WHERE s.nome IN ('Pendente', 'Em preparo') AND DATE(p.dt_hr_pedido) < DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)) AS `Ocorrências`, 'Tela de Pedidos: concluir ou cancelar' AS `Onde olhar`\nUNION ALL\nSELECT 8 AS ordem, 'Bebidas vendidas sem tamanho' AS `Verificação`, (SELECT COUNT(*) FROM item_pedido i WHERE i.tamanho_id IS NULL AND EXISTS (SELECT 1 FROM produto_tamanho pt WHERE pt.produto_id = i.produto_id)) AS `Ocorrências`, 'Front/back: item de produto com tamanhos precisa de tamanho_id' AS `Onde olhar`\nUNION ALL\nSELECT 9 AS ordem, 'Produtos ativos sem foto' AS `Verificação`, (SELECT COUNT(*) FROM produto WHERE ativo = 1 AND (path_ft IS NULL OR path_ft = '')) AS `Ocorrências`, 'Cadastro de produto: enviar imagem' AS `Onde olhar`\nUNION ALL\nSELECT 10 AS ordem, 'Produtos ativos sem preço' AS `Verificação`, (SELECT COUNT(*) FROM produto p WHERE p.ativo = 1 AND p.preco_unidade IS NULL AND NOT EXISTS (SELECT 1 FROM produto_tamanho pt WHERE pt.produto_id = p.id)) AS `Ocorrências`, 'Cadastro de produto: preço ou tamanhos' AS `Onde olhar`\nUNION ALL\nSELECT 11 AS ordem, 'Pedidos de funcionário desativado (últimos 30 dias)' AS `Verificação`, (SELECT COUNT(*) FROM pedido p JOIN funcionario f ON f.id = p.funcionario_id WHERE f.ativo = 0 AND p.dt_hr_pedido >= (UTC_TIMESTAMP() - INTERVAL 3 HOUR) - INTERVAL 30 DAY) AS `Ocorrências`, 'Login de funcionário desativado ainda funciona?' AS `Onde olhar`\nUNION ALL\nSELECT 12 AS ordem, 'Dias com pedido sem clima carregado' AS `Verificação`, (SELECT COUNT(*) FROM vw_dia d WHERE d.data < DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR) AND d.temp_max_c IS NULL) AS `Ocorrências`, 'Bases externas: rodar extração/tratamento do Open-Meteo' AS `Onde olhar`\nUNION ALL\nSELECT 13 AS ordem, 'Dias com pedido fora do calendário' AS `Verificação`, (SELECT COUNT(*) FROM vw_dia d WHERE NOT EXISTS (SELECT 1 FROM calendario c WHERE c.data = d.data)) AS `Ocorrências`, 'Bases externas: gerar calendário do ano' AS `Onde olhar`\nUNION ALL\nSELECT 14 AS ordem, 'Previsão de movimento desatualizada (mais de 1 dia)' AS `Verificação`, (SELECT CASE WHEN MAX(data_referencia) IS NULL THEN 1 ELSE GREATEST(DATEDIFF(DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR), MAX(data_referencia)) - 1, 0) END FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)) AS `Ocorrências`, 'Rodar modelo_previsao/treinar_previsao.py' AS `Onde olhar`\nUNION ALL\nSELECT 15 AS ordem, 'Imagens com falha definitiva no S3' AS `Verificação`, (SELECT COUNT(*) FROM s3_cleanup_outbox WHERE status = 'FALHA_FINAL') AS `Ocorrências`, 'Ver painel Imagens no S3' AS `Onde olhar`\n) v\nORDER BY (`Ocorrências` = 0), ordem"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Verificação"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ocorrências"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Situação"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "OK": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "Verificar": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Modelo de previsão (regressão linear)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Previsão gerada há",
+      "description": "Rode o treinar_previsao.py todo dia, depois da carga do clima.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DATEDIFF(DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR), data_referencia) AS `Dias`\nFROM modelo_execucao WHERE id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 4
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Erro do modelo (validação)",
+      "description": "MAPE na validação temporal: modelo escolhido x média do dia da semana (regra anterior).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 36,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT mape_validacao AS `Modelo`, mape_regra_anterior AS `Regra anterior`\nFROM modelo_execucao WHERE id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Diferença é significativa?",
+      "description": "Teste de Diebold-Mariano: o modelo erra menos que a regra anterior de forma estatisticamente significativa (p < 0,05)?",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 11,
+        "y": 36,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN p_valor_vs_regra_anterior IS NULL THEN 'regra anterior venceu'\n            WHEN p_valor_vs_regra_anterior < 0.05 THEN CONCAT('Sim (p = ', p_valor_vs_regra_anterior, ')')\n            ELSE CONCAT('Não (p = ', ROUND(p_valor_vs_regra_anterior, 2), ')') END AS `Diebold-Mariano`\nFROM modelo_execucao WHERE id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#9E9E9E"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Faixa de 80% acerta",
+      "description": "Porcentagem dos dias da validação que caíram dentro da faixa provável (o ideal é ~80%).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 17,
+        "y": 36,
+        "w": 7,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT cobertura_intervalo AS `Cobertura`\nFROM modelo_execucao WHERE id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 75
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 24,
+      "type": "table",
+      "title": "Candidatos comparados na última validação",
+      "description": "Validação temporal (rolling origin): cada semana do histórico foi prevista treinando só com os dias anteriores. Vence o menor erro médio.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT v.descricao                                         AS `Modelo`,\n       v.dias_testados                                     AS `Dias testados`,\n       v.mae                                               AS `Erro médio (pedidos)`,\n       v.mape                                              AS `Erro médio (%)`,\n       v.rmse                                              AS `RMSE`,\n       CASE WHEN v.escolhido = 1 THEN 'Escolhido' ELSE '' END AS `Situação`\nFROM modelo_validacao v\nWHERE v.execucao_id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1)\nORDER BY v.mae"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erro médio (%)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Situação"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Escolhido": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 25,
+      "type": "row",
+      "title": "Bases externas (feriados e clima)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "Clima observado até",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DATE_FORMAT(MAX(data), '%d/%m/%Y') AS `Até`\nFROM clima_diario WHERE fonte = 'archive'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 27,
+      "type": "stat",
+      "title": "Previsão do tempo até",
+      "description": "Sem previsão futura, a dashboard do Cliente não consegue ajustar a previsão pela chuva.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 48,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(DATE_FORMAT(MAX(data), '%d/%m/%Y'), 'sem previsão') AS `Até`\nFROM clima_diario WHERE fonte = 'forecast' AND data >= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 29,
+      "type": "stat",
+      "title": "Dias sem atualizar o clima",
+      "description": "Dias entre hoje e o último dia de clima observado carregado.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 48,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DATEDIFF(DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR), MAX(data)) AS `Dias`\nFROM clima_diario WHERE fonte = 'archive'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 7
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 32,
+      "type": "row",
+      "title": "Imagens dos produtos (fila de limpeza)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "Fila de limpeza de imagens",
+      "description": "Imagens antigas de produtos que o back apaga em segundo plano (S3CleanupWorker), na pasta local ou no S3.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(status = 'PENDENTE'), 0)    AS `Pendentes`,\n       COALESCE(SUM(status = 'PROCESSANDO'), 0) AS `Processando`,\n       COALESCE(SUM(status = 'CONCLUIDO'), 0)   AS `Concluídas`,\n       COALESCE(SUM(status = 'FALHA_FINAL'), 0) AS `Falha final`\nFROM s3_cleanup_outbox"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    }
+  ]
+}

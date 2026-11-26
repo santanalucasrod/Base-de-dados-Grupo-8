@@ -1,0 +1,2075 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_KENTOCAFE",
+      "label": "MySQL Kento Café",
+      "description": "Banco cafeteria (usuário grafana, somente leitura)",
+      "type": "datasource",
+      "pluginId": "mysql",
+      "pluginName": "MySQL"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.4.0"
+    },
+    {
+      "type": "datasource",
+      "id": "mysql",
+      "name": "MySQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    }
+  ],
+  "uid": "kentocafe-cliente",
+  "title": "Kento Café — Painel da Gerência",
+  "description": "Previsão de movimento, equipe sugerida por hora, estoque e desempenho da cafeteria.",
+  "tags": [
+    "kentocafe",
+    "cliente"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "America/Sao_Paulo",
+  "weekStart": "monday",
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "horizonte",
+        "label": "Dias à frente",
+        "description": "Quantos dias da previsão mostrar (inclui hoje).",
+        "query": "7,14,28",
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "7",
+          "value": "7"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "7",
+            "value": "7"
+          },
+          {
+            "selected": false,
+            "text": "14",
+            "value": "14"
+          },
+          {
+            "selected": false,
+            "text": "28",
+            "value": "28"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "capacidade",
+        "label": "Pedidos/hora por pessoa",
+        "description": "Quantos pedidos uma pessoa prepara por hora sem estourar a meta de espera.",
+        "query": "16",
+        "current": {
+          "text": "16",
+          "value": "16"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "16",
+            "value": "16"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "meta",
+        "label": "Meta de espera (min)",
+        "description": "Tempo máximo desejado entre o pedido e o pronto.",
+        "query": "10",
+        "current": {
+          "text": "10",
+          "value": "10"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "10",
+            "value": "10"
+          }
+        ],
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Próximos dias — equipe e estoque",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "title": "Como ler este painel",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 2
+      },
+      "targets": [],
+      "options": {
+        "mode": "markdown",
+        "content": "A previsão vem de uma **regressão linear** treinada com o histórico: dia da semana, feriados e clima. A **equipe sugerida** divide os pedidos previstos da hora por *Pedidos/hora por pessoa* (ajuste lá em cima). A **faixa provável** mostra onde o movimento deve ficar em 8 de cada 10 dias."
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Pedidos previstos",
+      "description": "Soma dos pedidos previstos para os próximos dias (inclui hoje).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(pedidos_previstos) AS `Pedidos previstos`\nFROM vw_previsao_dia\nWHERE dias_a_frente < ${horizonte}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#6F4E37"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Previsão atualizada em",
+      "description": "Dia em que o modelo foi treinado. Se estiver velho, peça para rodar o treino de novo.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 3,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DATE_FORMAT(MAX(data_referencia), '%d/%m/%Y') AS `Atualizada em`\nFROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#9E9E9E"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Dia mais movimentado",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 3,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(DATE_FORMAT(data, '%d/%m'), ' (', dia_semana, ') · ', pedidos_previstos, ' pedidos') AS dia\nFROM vw_previsao_dia\nWHERE dias_a_frente < ${horizonte}\nORDER BY pedidos_previstos DESC, data\nLIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#C68E5B"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Horas que pedem reforço",
+      "description": "Horas em que os pedidos previstos passam do que uma pessoa dá conta.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS `Horas acima da capacidade`\nFROM vw_previsao_hora\nWHERE dias_a_frente < ${horizonte}\n  AND pedidos_previstos > ${capacidade}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 6
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Próximo feriado",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 3,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(feriado_nome, ' · ', DATE_FORMAT(data, '%d/%m')) AS feriado\nFROM calendario\nWHERE is_feriado = 1 AND data >= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\nORDER BY data\nLIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#4A7BA6"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Previsão por dia",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH pico AS (\n    SELECT data, hora, pedidos_previstos,\n           ROW_NUMBER() OVER (PARTITION BY data ORDER BY pedidos_previstos DESC, hora) AS ordem\n    FROM vw_previsao_hora\n    WHERE dias_a_frente < ${horizonte}\n)\nSELECT DATE_FORMAT(p.data, '%d/%m')                                    AS `Data`,\n       p.dia_semana                                                    AS `Dia`,\n       COALESCE(p.feriado_nome,\n                CASE WHEN p.is_ponte = 1 THEN 'Ponte de feriado'\n                     WHEN p.is_vespera_feriado = 1 THEN 'Véspera de feriado'\n                     ELSE '' END)                                      AS `Observação`,\n       p.previsao_tempo                                                AS `Tempo`,\n       p.temp_max_c                                                    AS `Máx. (°C)`,\n       p.pedidos_previstos                                             AS `Pedidos previstos`,\n       CONCAT(p.pedidos_min, ' a ', p.pedidos_max)                     AS `Faixa provável`,\n       CONCAT(pk.hora, 'h')                                            AS `Hora de pico`,\n       GREATEST(1, CEIL(pk.pedidos_previstos / ${capacidade}))         AS `Equipe no pico`\nFROM vw_previsao_dia p\nLEFT JOIN pico pk ON pk.data = p.data AND pk.ordem = 1\nWHERE p.dias_a_frente < ${horizonte}\nORDER BY p.data"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pedidos previstos"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8B5A2B"
+                }
+              },
+              {
+                "id": "max",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Equipe no pico"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 2
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Pessoas sugeridas por hora",
+      "description": "Pessoas preparando pedidos em cada hora para manter a espera dentro da meta (pedidos previstos ÷ pedidos/hora por pessoa, arredondado para cima).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DATE_FORMAT(data, '%d/%m') AS `Data`,\n       ANY_VALUE(dia_semana)      AS `Dia`,\n       MAX(CASE WHEN hora = 9 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `9h`,\n       MAX(CASE WHEN hora = 10 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `10h`,\n       MAX(CASE WHEN hora = 11 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `11h`,\n       MAX(CASE WHEN hora = 12 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `12h`,\n       MAX(CASE WHEN hora = 13 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `13h`,\n       MAX(CASE WHEN hora = 14 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `14h`,\n       MAX(CASE WHEN hora = 15 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `15h`,\n       MAX(CASE WHEN hora = 16 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `16h`,\n       MAX(CASE WHEN hora = 17 THEN GREATEST(1, CEIL(pedidos_previstos / ${capacidade})) END) AS `17h`\nFROM vw_previsao_hora\nWHERE dias_a_frente < ${horizonte}\nGROUP BY data\nORDER BY data"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^\\d+h$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 2
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Produtos para os próximos dias",
+      "description": "Unidades previstas = quanto cada produto saiu por pedido nas últimas 4 semanas × pedidos previstos no horizonte escolhido.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\nref AS (SELECT DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR) AS hoje),\njanela AS (\n    SELECT p.id\n    FROM pedido p\n    JOIN status s ON s.id = p.status_id\n    JOIN ref ON DATE(p.dt_hr_pedido) >= ref.hoje - INTERVAL 28 DAY AND DATE(p.dt_hr_pedido) < ref.hoje\n    WHERE s.nome <> 'Cancelado'\n),\ntotal_janela AS (SELECT COUNT(*) AS pedidos FROM janela),\nprevisto AS (SELECT SUM(pedidos_previstos) AS pedidos FROM vw_previsao_dia WHERE dias_a_frente < ${horizonte}),\nuso AS (\n    SELECT ip.produto_id, SUM(ip.quantidade) AS unidades\n    FROM item_pedido ip\n    JOIN janela j ON j.id = ip.pedido_id\n    GROUP BY ip.produto_id\n),\nproduto_previsto AS (\n    SELECT u.produto_id,\n           u.unidades                                         AS unidades_4_semanas,\n           u.unidades / NULLIF(t.pedidos, 0) * pv.pedidos     AS unidades_previstas\n    FROM uso u CROSS JOIN total_janela t CROSS JOIN previsto pv\n)\nSELECT pr.nome                                AS `Produto`,\n       c.nome                                 AS `Categoria`,\n       ROUND(pp.unidades_previstas)           AS `Unidades previstas`,\n       ROUND(pp.unidades_4_semanas / 4)       AS `Média por semana`\nFROM produto_previsto pp\nJOIN produto pr  ON pr.id = pp.produto_id\nJOIN categoria c ON c.id = pr.categoria_id\nORDER BY pp.unidades_previstas DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unidades previstas"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8B5A2B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Ingredientes mais usados nos próximos dias",
+      "description": "Quantos produtos previstos usam cada ingrediente (o cadastro não tem a quantidade por receita, então é um guia de prioridade para o estoque, não uma lista de compras).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\nref AS (SELECT DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR) AS hoje),\njanela AS (\n    SELECT p.id\n    FROM pedido p\n    JOIN status s ON s.id = p.status_id\n    JOIN ref ON DATE(p.dt_hr_pedido) >= ref.hoje - INTERVAL 28 DAY AND DATE(p.dt_hr_pedido) < ref.hoje\n    WHERE s.nome <> 'Cancelado'\n),\ntotal_janela AS (SELECT COUNT(*) AS pedidos FROM janela),\nprevisto AS (SELECT SUM(pedidos_previstos) AS pedidos FROM vw_previsao_dia WHERE dias_a_frente < ${horizonte}),\nuso AS (\n    SELECT ip.produto_id, SUM(ip.quantidade) AS unidades\n    FROM item_pedido ip\n    JOIN janela j ON j.id = ip.pedido_id\n    GROUP BY ip.produto_id\n),\nproduto_previsto AS (\n    SELECT u.produto_id,\n           u.unidades                                         AS unidades_4_semanas,\n           u.unidades / NULLIF(t.pedidos, 0) * pv.pedidos     AS unidades_previstas\n    FROM uso u CROSS JOIN total_janela t CROSS JOIN previsto pv\n)\nSELECT i.nome                                 AS `Ingrediente`,\n       ROUND(SUM(pp.unidades_previstas))      AS `Produtos previstos que levam`,\n       COUNT(DISTINCT pi.produto_id)          AS `Itens do cardápio`\nFROM produto_previsto pp\nJOIN produto_ingrediente pi ON pi.produto_id = pp.produto_id\nJOIN ingrediente i          ON i.id = pi.ingrediente_id\nGROUP BY i.id, i.nome\nORDER BY SUM(pp.unidades_previstas) DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Produtos previstos que levam"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8B5A2B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Como foi o período (seletor de datas no canto superior direito)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Faturamento",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(p.valor_total) AS `Faturamento`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5A8F5A"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "vs período anterior",
+      "description": "Comparação com o período de mesmo tamanho logo antes do escolhido.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 36,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100 * (SUM(CASE WHEN p.dt_hr_pedido >= FROM_UNIXTIME($__unixEpochFrom()) THEN p.valor_total END)\n            / NULLIF(SUM(CASE WHEN p.dt_hr_pedido < FROM_UNIXTIME($__unixEpochFrom()) THEN p.valor_total END), 0)\n            - 1) AS `Variação do faturamento`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE s.nome <> 'Cancelado'\n  AND p.dt_hr_pedido >= FROM_UNIXTIME(2 * $__unixEpochFrom() - $__unixEpochTo())\n  AND p.dt_hr_pedido <= FROM_UNIXTIME($__unixEpochTo())"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Pedidos",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 36,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS `Pedidos`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#6F4E37"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Ticket médio",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 36,
+        "w": 5,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT AVG(p.valor_total) AS `Ticket médio`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#C68E5B"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Dentro da meta",
+      "description": "Pedidos prontos em até a meta de espera (campo Meta de espera).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 36,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100 * AVG(espera_min <= ${meta}) AS `Dentro da meta`\nFROM (\nSELECT espera_min\nFROM vw_pedido\nWHERE $__timeFilter(dt_hr_pedido) AND espera_min IS NOT NULL) e"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Pedidos e faturamento por dia",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT UNIX_TIMESTAMP(DATE(p.dt_hr_pedido)) AS time,\n       COUNT(*)                              AS `Pedidos`,\n       SUM(p.valor_total)                    AS `Faturamento`\nFROM pedido p JOIN status s ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'\nGROUP BY UNIX_TIMESTAMP(DATE(p.dt_hr_pedido))\nORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "axisSoftMin": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Faturamento"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyBRL"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pedidos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#6F4E37"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Faturamento"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5A8F5A"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 26,
+      "type": "barchart",
+      "title": "Espera conforme o volume da hora",
+      "description": "Mostra a partir de quantos pedidos por hora a espera passa da meta — é daí que vem o valor sugerido em Pedidos/hora por pessoa.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT faixa AS `Pedidos na hora`,\n       ROUND(100 * AVG(espera_min <= ${meta}), 1) AS `Dentro da meta (%)`,\n       ROUND(AVG(espera_min), 1)                   AS `Espera média (min)`\nFROM (\n    SELECT p.espera_min,\n           CASE WHEN v.pedidos <= 4 THEN '01–04' WHEN v.pedidos <= 8 THEN '05–08'\n                WHEN v.pedidos <= 12 THEN '09–12' WHEN v.pedidos <= 16 THEN '13–16'\n                WHEN v.pedidos <= 20 THEN '17–20' WHEN v.pedidos <= 24 THEN '21–24'\n                ELSE '25+' END AS faixa\n    FROM vw_pedido p\n    JOIN vw_dia_hora v ON v.data = p.data AND v.hora = p.hora\n    WHERE $__timeFilter(p.dt_hr_pedido) AND p.espera_min IS NOT NULL\n) t\nGROUP BY faixa\nORDER BY faixa"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Espera média (min)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "m"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dentro da meta (%)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dentro da meta (%)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5A8F5A"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Espera média (min)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C68E5B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "vertical",
+        "stacking": "none",
+        "showValue": "auto",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": "table",
+      "title": "Média de pedidos por dia da semana e hora",
+      "description": "Mapa de calor do período: média de pedidos em cada hora de cada dia da semana.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH dias AS (SELECT data FROM vw_dia WHERE data BETWEEN DATE($__timeFrom()) AND DATE($__timeTo())),\nqtd AS (SELECT WEEKDAY(data) AS dia, COUNT(*) AS n FROM dias GROUP BY WEEKDAY(data))\nSELECT ELT(MAX(q.dia) + 1, 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo') AS `Dia`,\n       ROUND(SUM(CASE WHEN h.hora = 9 THEN h.pedidos END) / MAX(q.n), 1) AS `9h`,\n       ROUND(SUM(CASE WHEN h.hora = 10 THEN h.pedidos END) / MAX(q.n), 1) AS `10h`,\n       ROUND(SUM(CASE WHEN h.hora = 11 THEN h.pedidos END) / MAX(q.n), 1) AS `11h`,\n       ROUND(SUM(CASE WHEN h.hora = 12 THEN h.pedidos END) / MAX(q.n), 1) AS `12h`,\n       ROUND(SUM(CASE WHEN h.hora = 13 THEN h.pedidos END) / MAX(q.n), 1) AS `13h`,\n       ROUND(SUM(CASE WHEN h.hora = 14 THEN h.pedidos END) / MAX(q.n), 1) AS `14h`,\n       ROUND(SUM(CASE WHEN h.hora = 15 THEN h.pedidos END) / MAX(q.n), 1) AS `15h`,\n       ROUND(SUM(CASE WHEN h.hora = 16 THEN h.pedidos END) / MAX(q.n), 1) AS `16h`,\n       ROUND(SUM(CASE WHEN h.hora = 17 THEN h.pedidos END) / MAX(q.n), 1) AS `17h`\nFROM vw_dia_hora h\nJOIN dias d ON d.data = h.data\nJOIN qtd q  ON q.dia = WEEKDAY(h.data)\nGROUP BY WEEKDAY(h.data)\nORDER BY WEEKDAY(h.data)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^\\d+h$"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 28,
+      "type": "barchart",
+      "title": "Produtos mais vendidos",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT pr.nome AS Produto, SUM(ip.quantidade) AS Unidades\nFROM item_pedido ip\nJOIN pedido p   ON p.id = ip.pedido_id\nJOIN status s   ON s.id = p.status_id\nJOIN produto pr ON pr.id = ip.produto_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'\nGROUP BY pr.id, pr.nome\nORDER BY Unidades DESC\nLIMIT 10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unidades"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#6F4E37"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "none",
+        "showValue": "always",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 30,
+      "type": "barchart",
+      "title": "Personalizações mais pedidas",
+      "description": "",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 65,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT pe.nome AS `Personalização`, COUNT(*) AS Pedidos\nFROM item_pedido_personalizacao ipp\nJOIN personalizacao pe ON pe.id = ipp.personalizacao_id\nJOIN item_pedido ip    ON ip.id = ipp.item_pedido_id\nJOIN pedido p          ON p.id = ip.pedido_id\nJOIN status s          ON s.id = p.status_id\nWHERE $__timeFilter(p.dt_hr_pedido) AND s.nome <> 'Cancelado'\nGROUP BY pe.id, pe.nome\nORDER BY Pedidos DESC\nLIMIT 10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pedidos"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C68E5B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "none",
+        "showValue": "always",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 31,
+      "type": "row",
+      "title": "O que faz o movimento subir ou cair",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 75,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 36,
+      "type": "table",
+      "title": "O que o modelo aprendeu",
+      "description": "Efeito de cada fator no número de pedidos do dia, mantendo os outros iguais. Só aparecem os efeitos estatisticamente comprovados (p-valor abaixo de 0,05).",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT descricao                                                       AS `Fator`,\n       efeito_pct                                                      AS `Efeito no movimento`,\n       CONCAT(FORMAT(efeito_min_pct, 0, 'pt_BR'), '% a ', FORMAT(efeito_max_pct, 0, 'pt_BR'), '%')\n                                                                       AS `Faixa (95% de confiança)`,\n       CASE WHEN p_valor < 0.05 THEN 'Comprovado' ELSE 'Não comprovado' END AS `Estatisticamente`\nFROM modelo_coeficiente\nWHERE execucao_id = (SELECT id FROM modelo_execucao WHERE data_referencia <= DATE(UTC_TIMESTAMP() - INTERVAL 3 HOUR)\n                      ORDER BY data_referencia DESC, id DESC LIMIT 1) AND termo <> 'const' AND p_valor < 0.05\nORDER BY ABS(efeito_pct) DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "Sem registros"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Efeito no movimento"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Efeito no movimento"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Estatisticamente"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Comprovado": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "Não comprovado": {
+                        "color": "text",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 38,
+      "type": "barchart",
+      "title": "Bebidas frias conforme a temperatura",
+      "description": "Ajuda a decidir quanto gelo, leite gelado e chás preparar conforme a previsão.",
+      "datasource": {
+        "type": "mysql",
+        "uid": "${DS_KENTOCAFE}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 84,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${DS_KENTOCAFE}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(cd.faixa_temperatura, ' (', COUNT(DISTINCT cd.data), ' dias)') AS `Faixa de temperatura`,\n       ROUND(100 * SUM(CASE WHEN c.nome = 'Bebidas Frias' THEN ip.quantidade ELSE 0 END)\n             / SUM(ip.quantidade), 1)                                       AS `Bebidas frias (% das bebidas)`\nFROM item_pedido ip\nJOIN pedido p       ON p.id = ip.pedido_id\nJOIN status s       ON s.id = p.status_id\nJOIN produto pr     ON pr.id = ip.produto_id\nJOIN categoria c    ON c.id = pr.categoria_id\nJOIN clima_diario cd ON cd.data = DATE(p.dt_hr_pedido)\nWHERE s.nome <> 'Cancelado' AND c.nome IN ('Bebidas Quentes', 'Bebidas Frias')\nGROUP BY cd.faixa_temperatura\nORDER BY FIELD(cd.faixa_temperatura, 'Frio', 'Ameno', 'Quente')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bebidas frias (% das bebidas)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#4A7BA6"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "vertical",
+        "stacking": "none",
+        "showValue": "always",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ]
+}
