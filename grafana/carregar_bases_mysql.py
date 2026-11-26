@@ -29,8 +29,6 @@ PASTA_SILVER = Path("./dados/silver")
 SAIDA = Path("./grafana/02_carga_bases_externas.sql")
 LINHAS_POR_INSERT = 500
 
-# Caminho de cada tabela no bucket trusted (o mesmo que tratar_feriados.py e
-# tratar_openmeteo.py gravam no modo Glue).
 CHAVES_S3 = {
     "calendario": "silver/calendario/calendario_silver.csv",
     "feriado": "silver/feriados/feriados_silver.csv",
@@ -38,7 +36,6 @@ CHAVES_S3 = {
     "clima_horario": "silver/clima_horario/clima_horario_silver.csv",
 }
 
-# tabela -> (arquivo silver no PC, colunas na ordem do CSV)
 BASES = {
     "calendario": (
         "feriados/calendario_silver.csv",
@@ -64,7 +61,6 @@ BASES = {
     ),
 }
 
-# Chave de cada tabela: não é atualizada no ON DUPLICATE KEY UPDATE.
 CHAVES = {
     "calendario": {"data"},
     "feriado": {"data", "nome"},
@@ -139,7 +135,6 @@ def main() -> None:
         controle.append(f"    ('{tabela}', '{arquivo}', {len(linhas)}, NOW())")
         print(f"{tabela}: {len(linhas)} linhas")
 
-    # Registro da carga: a dashboard do Administrador usa para mostrar quando cada base foi atualizada.
     partes.append(
         "INSERT INTO `carga_base_externa` (`tabela`, `arquivo`, `linhas`, `carregado_em`) VALUES\n"
         + ",\n".join(controle) + ";\n"
